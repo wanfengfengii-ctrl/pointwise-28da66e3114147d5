@@ -1,0 +1,23 @@
+{
+  "recorder": "recorder-1",
+  "slot": "slot-1",
+  "shift": "night-A",
+  "profile": ["fan-line", "v1"],
+  "events": [
+    ["trigger", "P"],
+    ["record", "P", 1, 7, "P/segment-1"],
+    ["register", "order-P", "P"],
+    ["resume", "order-P"],
+    ["trigger", "Q"],
+    ["record", "Q", 1, 13, "Q/segment-1"],
+    ["record", "Q", 2, 29, "Q/segment-2"],
+    ["record", "P", 2, 11, "P/segment-2"],
+    ["register", "order-Q", "Q"],
+    ["resume", "order-P"],
+    ["resume", "order-Q"],
+    ["trigger", "R"],
+    ["record", "R", 1, 0, "R/segment-1"],
+    ["register", "order-R", "R"],
+    ["resume", "order-R"]
+  ]
+}
