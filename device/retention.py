@@ -96,3 +96,30 @@ def release_retention(connection, request_id, pulse):
         if not is_pulse_retained(connection, pulse):
             retire_pulse(connection, pulse)
         return RetentionRecord(request_id, pulse, RetentionStatus.RELEASED)
+
+
+def clear_retention(connection, request_id, pulse):
+    """Make one request permanently hold nothing, even if a late call arrives.
+
+    A missing request gets a released tombstone so a delayed request for the
+    same number can never create a fresh hold.  An existing hold is released.
+    """
+    pulse.validate()
+    if not isinstance(request_id, str) or not request_id.strip():
+        raise ValueError('a retention request identifier is required')
+    with transaction(connection, write=True):
+        record = query_retention(connection, request_id)
+        if record is not None and record.pulse != pulse:
+            raise ValueError('retention request is bound to another pulse')
+        if record is None:
+            connection.execute('''
+                INSERT INTO retention_requests (request_id, recorder, pulse, status)
+                VALUES (?, ?, ?, 'released')
+            ''', (request_id, *pulse.key))
+        elif record.status is RetentionStatus.HELD:
+            connection.execute('''
+                UPDATE retention_requests SET status = 'released' WHERE request_id = ?
+            ''', (request_id,))
+            if not is_pulse_retained(connection, pulse):
+                retire_pulse(connection, pulse)
+    return 'cleared'

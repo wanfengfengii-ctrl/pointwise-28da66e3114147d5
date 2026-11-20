@@ -5,8 +5,8 @@ from dataclasses import dataclass
 from archive.ledger import ensure_ledger_store
 from archive.results import SignedResult, ensure_result_store, find_signed_result
 from capture.orders import (
-    CaptureOrder, ensure_order_store, get_order, save_new_order, update_custody,
-    validate_order_id, validate_shift,
+    CaptureOrder, ensure_order_store, get_order, is_cancelled, save_new_order,
+    update_custody, validate_order_id, validate_shift,
 )
 from capture.release import release_after_publish
 from device.retention import RetentionReplyLost, query_retention, request_retention
@@ -35,7 +35,8 @@ def initialize_station(connection):
 
 
 def refresh_custody(station, recorder, order, *, lose_reply=False, hide_status=False):
-    if recorder is None or order.custody in ('released', 'unavailable'):
+    if (recorder is None or order.custody in ('released', 'unavailable')
+            or is_cancelled(station, order.order_id)):
         return order
     try:
         record = query_retention(recorder, order.retention_id, hide_status=hide_status)
@@ -74,8 +75,9 @@ def register(station, recorder, order_id, pulse, segment_count, profile_key, *,
             ))
         elif order.binding != (pulse, segment_count, profile_key):
             raise OrderConflict('order number already has a different capture binding')
+        cancelled = is_cancelled(station, order_id)
 
-    if find_signed_result(station, order_id) is None:
+    if not cancelled and find_signed_result(station, order_id) is None:
         order = refresh_custody(
             station, recorder, order, lose_reply=lose_reply, hide_status=hide_status
         )
@@ -85,5 +87,7 @@ def register(station, recorder, order_id, pulse, segment_count, profile_key, *,
             release_after_publish(station, recorder, order_id)
             order = get_order(station, order_id)
         return Registration(order, 'signed', signed)
+    if cancelled or is_cancelled(station, order_id):
+        return Registration(order, 'cancelled')
     status = 'pending_confirmation' if order.custody == 'pending' else 'pending'
     return Registration(order, status)

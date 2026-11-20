@@ -9,7 +9,7 @@ from archive.measurement import measure_pulse
 from archive.results import (
     FirstReceipt, SignedResult, find_signed_result, store_first_receipt, store_result,
 )
-from capture.orders import get_order, save_handoff_progress
+from capture.orders import get_order, is_cancelled, save_handoff_progress
 from spec.versions import get_version
 from storage import transaction
 
@@ -53,6 +53,8 @@ def receive_and_publish(connection, order_id, segments, *, interrupt_publication
 
         admitted = list_admitted_segments(connection, order_id)
         save_handoff_progress(connection, order_id, len(admitted))
+        if is_cancelled(connection, order_id):
+            return Publication(None, missing_positions(profile, admitted), tuple(rejected))
         ordered = complete_segments(profile, admitted)
         if ordered is None or order.custody != 'held':
             return Publication(None, missing_positions(profile, admitted), tuple(rejected))

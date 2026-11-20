@@ -48,6 +48,11 @@ def ensure_order_store(connection):
     connection.execute('''
         CREATE INDEX IF NOT EXISTS orders_by_shift ON capture_orders (shift, order_id)
     ''')
+    connection.execute('''
+        CREATE TABLE IF NOT EXISTS cancelled_orders (
+            order_id TEXT PRIMARY KEY REFERENCES capture_orders(order_id)
+        )
+    ''')
 
 
 def _order_from_row(row):
@@ -106,3 +111,15 @@ def list_orders_for_shift(connection, shift):
         SELECT * FROM capture_orders WHERE shift = ? ORDER BY order_id COLLATE BINARY
     ''', (shift,))
     return tuple(_order_from_row(row) for row in rows)
+
+
+def is_cancelled(connection, order_id):
+    return connection.execute('''
+        SELECT 1 FROM cancelled_orders WHERE order_id = ?
+    ''', (order_id,)).fetchone() is not None
+
+
+def mark_cancelled(connection, order_id):
+    connection.execute('''
+        INSERT INTO cancelled_orders (order_id) VALUES (?) ON CONFLICT (order_id) DO NOTHING
+    ''', (order_id,))

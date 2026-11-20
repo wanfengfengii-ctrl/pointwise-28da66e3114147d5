@@ -10,7 +10,7 @@ from storage import require_idle
 
 def resume(station, recorder, order_id, *, hide_status=False, interrupt_publication=False):
     view = lookup(station, order_id)
-    if recorder is None or view.status == 'unknown':
+    if recorder is None or view.status in ('unknown', 'cancelled'):
         return view
     require_idle(recorder)
     if view.status == 'signed':

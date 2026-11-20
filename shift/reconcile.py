@@ -12,10 +12,12 @@ class Reconciliation:
         return not self.issues
 
 
-def classify_order(order, signed):
+def classify_order(order, signed, cancelled=False):
     if order is None:
         return 'unknown'
-    return 'pending' if signed is None else 'signed'
+    if signed is not None:
+        return 'signed'
+    return 'cancelled' if cancelled else 'pending'
 
 
 def reconcile_signed_result(order, signed):
